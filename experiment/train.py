@@ -6,20 +6,20 @@ from tqdm import tqdm, trange
 import os
 import sys
 
-from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
-from keras.optimizers import SGD
+from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.optimizers import SGD
 import tensorflow as tf
 
-from model import TreeClassifier
+from canopy.model import PatchClassifier
 
-from paths import *
+from .paths import *
 
 from sklearn.decomposition import PCA
 from joblib import dump, load
 
 import argparse
 
-from keras import backend as K
+from tensorflow.keras import backend as K
 import tensorflow as tf
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -80,7 +80,7 @@ with h5.File(args.out + '/' + val_data_uri,'r') as f:
 print(x_shape, x_dtype)
 print(y_shape, y_dtype)
 
-classifier = TreeClassifier()
+classifier = PatchClassifier(num_classes=8)
 model = classifier.get_patch_model(x_shape)
 
 print(model.summary())
