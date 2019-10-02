@@ -1,5 +1,3 @@
-"""Here are all the paths to the relevant data.  Note that we can use a local path or an Amazon S3 URI.  To use Amazon S3, though, you would need to put your S3 credentials in environment variables."""
-
 base_uri = './data'
 
 # Canopy Height Model (CHM)
