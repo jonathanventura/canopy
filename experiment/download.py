@@ -31,11 +31,14 @@ files = [ 'Labels_Trimmed_Selective.CPG',
           'NEON_D17_TEAK_DP1_20170627_181333_reflectance.tif.aux.xml',
           'NEON_D17_TEAK_DP1_20170627_181333_reflectance.tif.enp',
           'NEON_D17_TEAK_DP1_20170627_181333_reflectance.tif.ovr',
-          'NEON_D17_TEAK_DP1QA_20170627_181333_RGB_Reflectance.zip',
+          'D17_CHM_all.tfw',
+          'D17_CHM_all.tif',
+          'D17_CHM_all.tif.aux.xml',
+          'D17_CHM_all.tif.ovr',
         ]
 
 for f in files:
   print('downloading %s'%f)
-  download('https://zenodo.org/record/3463589/files/%s?download=1'%f,'data/%s'%f)
+  download('https://zenodo.org/record/3468720/files/%s?download=1'%f,'data/%s'%f)
   print('')
 
