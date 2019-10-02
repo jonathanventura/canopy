@@ -1,23 +1,25 @@
 import numpy as np
+import cv2
+from math import floor, ceil
+import tqdm
+from joblib import dump, load
 
 import rasterio
 from rasterio.windows import Window
 from rasterio.enums import Resampling
 from rasterio.vrt import WarpedVRT
 
-import cv2
-
-import tqdm
-
-from model import PatchClassifier
-
-from math import floor, ceil
-
-from paths import *
-
-from joblib import dump, load
+from canopy.model import PatchClassifier
+from .paths import *
 
 import argparse
+
+from tensorflow.keras import backend as K
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
+K.set_session(sess)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--out',help='directory for output files')
@@ -63,7 +65,7 @@ if args.norm == 'pca':
   input_shape = (padded_tile_size,padded_tile_size,pca.n_components_)
 else:
   input_shape = (padded_tile_size,padded_tile_size,image_channels)
-tree_classifier = TreeClassifier()
+tree_classifier = PatchClassifier(num_classes=8)
 training_model = tree_classifier.get_patch_model(input_shape)
 training_model.load_weights(args.out + '/' + weights_uri)
 model = tree_classifier.get_convolutional_model(input_shape)
