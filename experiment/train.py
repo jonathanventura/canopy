@@ -30,7 +30,7 @@ np.random.seed(0)
 tf.set_random_seed(0)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--out',help='directory for output files')
+parser.add_argument('--out',required=True,help='directory for output files')
 parser.add_argument('--lr',type=float,default=0.0001,help='learning rate')
 parser.add_argument('--epochs',type=int,default=50,help='num epochs')
 parser.add_argument('--norm',default='pca',help='normalization (meanstd or pca)')

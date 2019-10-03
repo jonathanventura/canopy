@@ -1,11 +1,11 @@
 import numpy as np
 import tqdm
-from paths import *
 import os
 import h5py as h5
 
 from sklearn.model_selection import KFold
 from sklearn.cluster import KMeans
+from .paths import *
 
 from canopy.vector_utils import *
 from canopy.extract import *
@@ -13,7 +13,7 @@ from canopy.extract import *
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--out',help='directory prefix for output files')
+parser.add_argument('--out',required=True,help='directory prefix for output files')
 parser.add_argument('--rgb',action='store_true',help='use RGB data instead of hyperspectral')
 
 args = parser.parse_args()

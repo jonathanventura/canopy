@@ -1,11 +1,11 @@
 import numpy as np
 import tqdm
-from paths import *
 import os
 import h5py as h5
 
 from canopy.vector_utils import *
 from canopy.extract import *
+from .paths import *
 
 from sklearn.model_selection import train_test_split
 from sklearn.cluster import KMeans

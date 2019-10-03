@@ -22,7 +22,7 @@ sess = tf.Session(config=config)
 K.set_session(sess)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--out',help='directory for output files')
+parser.add_argument('--out',required=True,help='directory for output files')
 parser.add_argument('--rgb',action='store_true',help='use RGB data instead of hyperspectral')
 parser.add_argument('--norm',default='pca',help='normalization (meanstd or pca)')
 args = parser.parse_args()

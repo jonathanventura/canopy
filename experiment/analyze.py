@@ -25,7 +25,7 @@ from sklearn.metrics import confusion_matrix, accuracy_score, classification_rep
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--out',help='directory for output files')
+parser.add_argument('--out',required=True,help='directory for output files')
 parser.add_argument('--rgb',action='store_true',help='use RGB data instead of hyperspectral')
 parser.add_argument('--rf',action='store_true',help='test random forest prediction')
 args = parser.parse_args()
