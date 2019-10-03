@@ -48,20 +48,6 @@ polygons, labels = load_and_transform_shapefile(labels_shp_uri,'SP',image_meta['
 train_labels = [labels[ind] for ind in train_inds]
 test_labels = [labels[ind] for ind in test_inds]
 
-all_hist, _ = np.histogram(labels,bins=8,range=(0,8))
-train_hist, _ = np.histogram(train_labels,bins=8,range=(0,8))
-test_hist, _ = np.histogram(test_labels,bins=8,range=(0,8))
-
-print('class counts in splits:')
-print(all_hist)
-print(train_hist)
-print(test_hist)
-
-print('as percentages:')
-print(all_hist.astype('float32')/np.sum(all_hist))
-print(train_hist.astype('float32')/np.sum(train_hist))
-print(test_hist.astype('float32')/np.sum(test_hist))
-
 # open predicted label raster
 if args.rf:
     print('***** rf is on ******')
@@ -104,7 +90,9 @@ test_preds = get_predictions(test_inds)
  
 report = classification_report(test_labels, test_preds)
 mat = confusion_matrix(test_labels,test_preds)
+print('classification report:')
 print(report)
+print('confusion matrix:')
 print(mat)
 if args.rf:
   with open(args.out + '/rf_report.txt','w') as f:
