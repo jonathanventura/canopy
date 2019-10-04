@@ -1,21 +1,20 @@
 import numpy as np
-
 import h5py as h5
 from tqdm import tqdm, trange
-
 import os
 import sys
 
-from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
-from tensorflow.keras.optimizers import SGD
 import tensorflow as tf
-
-from canopy.model import PatchClassifier
-
-from .paths import *
+from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.optimizers import SGD, Adam
 
 from sklearn.decomposition import PCA
 from joblib import dump, load
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.model_selection import train_test_split
+
+from canopy.model import PatchClassifier
+from .paths import *
 
 import argparse
 
@@ -32,50 +31,47 @@ tf.set_random_seed(0)
 parser = argparse.ArgumentParser()
 parser.add_argument('--out',required=True,help='directory for output files')
 parser.add_argument('--lr',type=float,default=0.0001,help='learning rate')
-parser.add_argument('--epochs',type=int,default=50,help='num epochs')
+parser.add_argument('--epochs',type=int,default=20,help='num epochs')
 parser.add_argument('--norm',default='pca',help='normalization (meanstd or pca)')
 
 args = parser.parse_args()
 
-def estimate_mean_std(data_uri,num_samples=1000):
-    with h5.File(data_uri,'r') as f:
-        x_samples = f['data'][:].astype('float32')
-        x_samples = x_samples[:,7,7]
-        x_mean = np.mean(x_samples,axis=(0))
-        x_std = np.std(x_samples,axis=(0))+1e-5
+with h5.File(args.out + '/' + train_data_uri,'r') as f:
+  x_all = f['data'][:].astype('float32')
+  y_all = f['label'][:]
+
+class_weights = compute_class_weight('balanced',range(8),y_all)
+print('class weights: ',class_weights)
+class_weight_dict = {}
+for i in range(8):
+  class_weight_dict[i] = class_weights[i]
+
+def estimate_mean_std():
+    x_samples = x_all[:,7,7]
+    x_mean = np.mean(x_samples,axis=(0))
+    x_std = np.std(x_samples,axis=(0))+1e-5
     return x_mean, x_std
 
-def estimate_pca(data_uri,num_samples=1000):
-    with h5.File(data_uri,'r') as f:
-        x_samples = f['data'][:].astype('float32')
-        print(x_samples.shape)
-        x_samples = x_samples[:,7,7]
-        print(x_samples.shape)
-        pca = PCA(32,whiten=True)
-        print('fitting PCA...')
-        pca.fit(x_samples)
+def estimate_pca():
+    x_samples = x_all[:,7,7]
+    pca = PCA(32,whiten=True)
+    pca.fit(x_samples)
     return pca
 
 """Normalize training data"""
 if args.norm == 'meanstd':
-    x_train_mean, x_train_std = estimate_mean_std(args.out + '/' + train_data_uri)
+    x_train_mean, x_train_std = estimate_mean_std()
     np.savez(args.out + '/' + mean_std_uri,x_train_mean,x_train_std)
 elif args.norm == 'pca':
-    pca = estimate_pca(args.out + '/' + train_data_uri)
+    pca = estimate_pca()
     dump(pca,args.out + '/pca.joblib')
 
-with h5.File(args.out + '/' + train_data_uri,'r') as f:
-  x_shape = f['data'].shape[1:]
-  x_dtype = f['data'].dtype
-  y_shape = f['label'].shape[1:]
-  y_dtype = f['label'].dtype
-  if args.norm=='pca':
+x_shape = x_all.shape[1:]
+x_dtype = x_all.dtype
+y_shape = y_all.shape[1:]
+y_dtype = y_all.dtype
+if args.norm=='pca':
     x_shape = x_shape[:-1] + (pca.n_components_,)
-
-  num_train = len(f['data'])
-
-with h5.File(args.out + '/' + val_data_uri,'r') as f:
-  num_val = len(f['data'])
 
 print(x_shape, x_dtype)
 print(y_shape, y_dtype)
@@ -94,54 +90,14 @@ def apply_pca(x):
   x = np.reshape(x,(-1,H,W,x.shape[-1]))
   return x
 
-def hdf5_generator(path,batch_size,shuffle=True,augment=True):
-  with h5.File(path,'r') as f:
-    x = f['data']
-    y = f['label']
-    while True:
-      inds = np.random.randint(len(x),size=(batch_size))
-      x_batch = []
-      y_batch = []
-      for i,ind in enumerate(inds):
-        patch = x[ind]
-        if augment:
-          rot = np.random.randint(4)
-          patch = np.rot90(patch,rot)
-          if np.random.randint(2):
-            patch = np.flip(patch,axis=0)
-            patch = np.flip(patch,axis=1)
-        x_batch.append(patch.astype('float32'))
-        y_batch.append(y[ind])
-      x_batch = np.stack(x_batch,axis=0)
-      y_batch = np.stack(y_batch,axis=0)
-      if args.norm == 'meanstd':
-        x_batch -= np.reshape(x_train_mean,(1,1,1,-1))
-        x_batch /= np.reshape(x_train_std,(1,1,1,-1))
-      elif args.norm == 'pca':
-        x_batch = apply_pca(x_batch)
-      yield x_batch, y_batch
-
 checkpoint = ModelCheckpoint(filepath=args.out + '/' + weights_uri, monitor='val_acc', verbose=True, save_best_only=True, save_weights_only=True)
 reducelr = ReduceLROnPlateau(monitor='val_acc', factor=0.5, patience=10, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
 
-with h5.File(args.out + '/' + train_data_uri,'r') as f:
-  x_train = f['data'][:].astype('float32')
-  y_train = f['label'][:]
-
-batch_size = 32
-
-with h5.File(args.out + '/' + val_data_uri,'r') as f:
-  x_val = f['data'][:].astype('float32')
-  y_val = f['label'][:]
-
 if args.norm == 'meanstd':
-  x_train -= np.reshape(x_train_mean,(1,1,1,-1))
-  x_train /= np.reshape(x_train_std,(1,1,1,-1))
-  x_val -= np.reshape(x_train_mean,(1,1,1,-1))
-  x_val /= np.reshape(x_train_std,(1,1,1,-1))
+  x_all -= np.reshape(x_train_mean,(1,1,1,-1))
+  x_all /= np.reshape(x_train_std,(1,1,1,-1))
 elif args.norm == 'pca':
-  x_train = apply_pca(x_train)
-  x_val = apply_pca(x_val)
+  x_all = apply_pca(x_all)
 
 def augment_images(x,y):
   x_aug = []
@@ -159,13 +115,21 @@ def augment_images(x,y):
           pbar.update(1)
   return np.stack(x_aug,axis=0), np.stack(y_aug,axis=0)
 
-x_train, y_train = augment_images(x_train,y_train)
-x_val, y_val = augment_images(x_val,y_val)
+x_all, y_all = augment_images(x_all,y_all)
+
+train_inds, val_inds = train_test_split(range(len(x_all)),test_size=0.1,random_state=0)
+x_train = np.stack([x_all[i] for i in train_inds],axis=0)
+y_train = np.stack([y_all[i] for i in train_inds],axis=0)
+x_val = np.stack([x_all[i] for i in val_inds],axis=0)
+y_val = np.stack([y_all[i] for i in val_inds],axis=0)
+
+batch_size = 32
 
 model.fit( x_train, y_train,
-                     epochs=args.epochs,
-                     batch_size=batch_size,
-                     validation_data=(x_val,y_val),
-                     verbose=1,
-                     callbacks=[checkpoint,reducelr])
+           epochs=args.epochs,
+           batch_size=batch_size,
+           validation_data=(x_val,y_val),
+           verbose=1,
+           callbacks=[checkpoint,reducelr],
+           class_weight=class_weight_dict)
 
