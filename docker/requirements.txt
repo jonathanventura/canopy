@@ -10,6 +10,6 @@ scikit-image==0.14.0
 tqdm==4.28.1
 joblib==0.12.5
 fiona==1.8.6
-opencv-python==3.4.5.20
+opencv-python==4.2.0.32
 wget
 jupyterlab
